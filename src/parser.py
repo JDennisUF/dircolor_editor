@@ -47,6 +47,58 @@ class DirColorsParser:
         self.terminal_types: List[str] = []
         self.comments: List[str] = []
         
+    def infer_categories_from_file(self) -> None:
+        """Infer extension categories based on how they're organized in the file."""
+        # Reset to original categories first
+        self.EXTENSION_CATEGORIES = {
+            'archives': ['.tar', '.tgz', '.zip', '.gz', '.bz2', '.xz', '.7z', '.rar'],
+            'documents': ['.pdf', '.doc', '.docx', '.txt', '.md', '.rtf'],
+            'images': ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.svg', '.tiff'],
+            'audio': ['.mp3', '.wav', '.flac', '.ogg', '.m4a', '.aac'],
+            'video': ['.mp4', '.avi', '.mkv', '.mov', '.wmv', '.webm'],
+            'code': ['.py', '.js', '.html', '.css', '.c', '.cpp', '.java', '.php'],
+            'config': ['.conf', '.cfg', '.ini', '.yaml', '.yml', '.json']
+        }
+        
+        # Now read through the entries and detect patterns by comment sections
+        current_category = None
+        
+        # Parse the file content to detect category sections
+        if hasattr(self, '_file_lines'):
+            for line in self._file_lines:
+                line = line.strip()
+                if line.startswith('#') and 'files' in line.lower():
+                    # Try to detect category from comment
+                    if 'archive' in line.lower():
+                        current_category = 'archives'
+                    elif 'document' in line.lower():
+                        current_category = 'documents'
+                    elif 'image' in line.lower():
+                        current_category = 'images'
+                    elif 'audio' in line.lower():
+                        current_category = 'audio'
+                    elif 'video' in line.lower():
+                        current_category = 'video'
+                    elif 'code' in line.lower():
+                        current_category = 'code'
+                    elif 'config' in line.lower():
+                        current_category = 'config'
+                    else:
+                        current_category = None
+                        
+                elif line and not line.startswith('#') and current_category:
+                    # This is an extension line under a category
+                    parts = line.split()
+                    if len(parts) >= 2 and parts[0].startswith('.'):
+                        extension = parts[0]
+                        # Remove from other categories first
+                        for cat_list in self.EXTENSION_CATEGORIES.values():
+                            if extension in cat_list:
+                                cat_list.remove(extension)
+                        # Add to current category
+                        if extension not in self.EXTENSION_CATEGORIES[current_category]:
+                            self.EXTENSION_CATEGORIES[current_category].append(extension)
+    
     def parse_file(self, filepath: Path) -> None:
         """Parse a .dircolors file."""
         self.entries.clear()
@@ -59,11 +111,17 @@ class DirColorsParser:
         except (IOError, UnicodeDecodeError) as e:
             raise ValueError(f"Could not read file {filepath}: {e}")
             
+        # Store lines for category inference
+        self._file_lines = [line.rstrip('\n\r') for line in lines]
+        
         for line_num, line in enumerate(lines, 1):
             try:
                 self._parse_line(line.rstrip('\n\r'))
             except Exception as e:
                 print(f"Warning: Error parsing line {line_num}: {e}")
+                
+        # Infer categories from the file structure after parsing
+        self.infer_categories_from_file()
                 
     def _parse_line(self, line: str) -> None:
         """Parse a single line from the .dircolors file."""
@@ -209,6 +267,54 @@ class DirColorsParser:
         """Remove a color entry. Returns True if entry existed."""
         return self.entries.pop(file_type, None) is not None
         
+    def move_extension_to_category(self, extension: str, target_category: str) -> bool:
+        """Move an extension to a different category."""
+        print(f"DEBUG Parser: *** MOVE_EXTENSION_TO_CATEGORY: '{extension}' to '{target_category}' ***")
+        
+        if not extension.startswith('.'):
+            print(f"DEBUG Parser: Extension doesn't start with dot: {extension}")
+            return False
+            
+        # Get the current entry
+        entry = self.get_entry(extension)
+        if not entry:
+            print(f"DEBUG Parser: No entry found for extension: {extension}")
+            return False
+            
+        print(f"DEBUG Parser: Found entry for {extension}: {entry.color_code}")
+        
+        # Remove from current category if it exists in predefined categories
+        found_in_category = None
+        for category_name, extensions in self.EXTENSION_CATEGORIES.items():
+            if extension in extensions:
+                print(f"DEBUG Parser: Found {extension} in category {category_name}, removing...")
+                extensions.remove(extension)
+                found_in_category = category_name
+                break
+                
+        if found_in_category:
+            print(f"DEBUG Parser: Removed {extension} from {found_in_category}")
+        else:
+            print(f"DEBUG Parser: Extension {extension} was not in any predefined category")
+                
+        # Add to target category if it exists
+        if target_category in self.EXTENSION_CATEGORIES:
+            if extension not in self.EXTENSION_CATEGORIES[target_category]:
+                self.EXTENSION_CATEGORIES[target_category].append(extension)
+                print(f"DEBUG Parser: Added {extension} to {target_category}")
+                return True
+            else:
+                print(f"DEBUG Parser: Extension {extension} already in {target_category}")
+                return True
+        elif target_category == 'other':
+            # Handle 'other' category - just remove from predefined categories
+            print(f"DEBUG Parser: Moved {extension} to 'other' category")
+            return True
+        else:
+            print(f"DEBUG Parser: Unknown target category: {target_category}")
+            
+        return False
+        
     def get_categories(self) -> Dict[str, List[str]]:
         """Get file types organized by categories."""
         categories = {}
@@ -219,13 +325,13 @@ class DirColorsParser:
             if existing:
                 categories[category] = existing
                 
-        # File extensions
+        # File extensions - organize by current EXTENSION_CATEGORIES state
         for category, extensions in self.EXTENSION_CATEGORIES.items():
             existing = [ext for ext in extensions if ext in self.entries]
             if existing:
                 categories[f"{category}_extensions"] = existing
                 
-        # Uncategorized extensions
+        # Uncategorized extensions - anything not in current EXTENSION_CATEGORIES
         uncategorized = []
         for file_type in self.entries:
             if file_type.startswith('.') and not self._is_categorized(file_type):

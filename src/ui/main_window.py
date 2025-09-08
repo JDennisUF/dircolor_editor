@@ -130,6 +130,7 @@ class MainWindow(Gtk.ApplicationWindow):
         left_frame.set_hexpand(False)  # Don't expand horizontally
         self.file_tree = FileTypeTreeView()
         self.file_tree.connect("selection-changed", self.on_file_type_selected)
+        self.file_tree.connect("extension-moved", self.on_extension_moved)
         left_frame.set_child(self.file_tree)
         content_box.append(left_frame)
         
@@ -412,6 +413,35 @@ class MainWindow(Gtk.ApplicationWindow):
             self.parser.set_entry(selected_type, color_code)
             self.preview_panel.update_preview(self.parser)
             self.set_modified(True)
+            
+    def on_extension_moved(self, tree_view, extension, target_category):
+        """Handle extension moved between categories via drag-and-drop."""
+        print(f"DEBUG MainWindow: *** RECEIVED MOVE REQUEST: '{extension}' to '{target_category}' ***")
+        
+        # Check if the extension exists before moving
+        entry = self.parser.get_entry(extension)
+        if entry:
+            print(f"DEBUG MainWindow: Found entry for {extension}: {entry.color_code}")
+        else:
+            print(f"DEBUG MainWindow: WARNING - No entry found for extension {extension}")
+            
+        # Use the parser's move method to handle category changes
+        try:
+            success = self.parser.move_extension_to_category(extension, target_category)
+            print(f"DEBUG MainWindow: Move operation result: {success}")
+            
+            if success:
+                # Refresh the UI to show the change
+                self.refresh_ui()
+                self.set_modified(True)
+                self.update_status(f"Moved {extension} to {target_category} category")
+            else:
+                print(f"DEBUG: Failed to move {extension} to {target_category}")
+                self.show_error(f"Could not move {extension} to {target_category} category")
+                
+        except Exception as e:
+            print(f"DEBUG: Error moving extension: {e}")
+            self.show_error(f"Failed to move extension: {e}")
             
     def set_modified(self, modified: bool):
         """Set the modified state."""

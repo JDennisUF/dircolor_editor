@@ -3,7 +3,7 @@
 import gi
 gi.require_version('Gtk', '4.0')
 
-from gi.repository import Gtk, GObject
+from gi.repository import Gtk, GObject, Gdk
 from typing import Optional
 import sys
 from pathlib import Path
@@ -16,6 +16,7 @@ class FileTypeTreeView(Gtk.ScrolledWindow):
     
     __gsignals__ = {
         'selection-changed': (GObject.SIGNAL_RUN_FIRST, None, (str,)),
+        'extension-moved': (GObject.SIGNAL_RUN_FIRST, None, (str, str)),
     }
     
     def __init__(self):
@@ -31,6 +32,9 @@ class FileTypeTreeView(Gtk.ScrolledWindow):
         self.tree_view = Gtk.TreeView(model=self.store)
         self.tree_view.set_headers_visible(True)
         self.tree_view.set_enable_tree_lines(True)
+        
+        # Enable drag and drop for GTK4
+        self.setup_drag_and_drop()
         
         # Create columns
         column = Gtk.TreeViewColumn("File Types")
@@ -52,8 +56,22 @@ class FileTypeTreeView(Gtk.ScrolledWindow):
         selection.set_mode(Gtk.SelectionMode.SINGLE)
         selection.connect("changed", self.on_selection_changed)
         
+        # Right-click context menu
+        gesture = Gtk.GestureClick()
+        gesture.set_button(3)  # Right mouse button
+        gesture.connect("pressed", self.on_right_click)
+        self.tree_view.add_controller(gesture)
+        
         self.set_child(self.tree_view)
         
+        # Track expansion state
+        self.expanded_paths = set()
+        
+        # Icon mappings
+        self.setup_icon_mappings()
+        
+    def setup_icon_mappings(self):
+        """Set up icon mappings for different file types."""
         # Category icons mapping
         self.category_icons = {
             'File System Objects': 'folder-symbolic',
@@ -88,8 +106,188 @@ class FileTypeTreeView(Gtk.ScrolledWindow):
             'SETGID': 'security-medium-symbolic'
         }
         
+    def setup_drag_and_drop(self):
+        """Set up drag and drop functionality for GTK4."""
+        # For now, let's disable drag-and-drop and add it as a menu option instead
+        # GTK4 drag-and-drop is complex and needs more testing
+        
+        # TODO: Implement working GTK4 drag-and-drop
+        # The current implementation has event handling issues
+        print("DEBUG: Drag-and-drop temporarily disabled, use context menu instead")
+        
+    def on_right_click(self, gesture, n_press, x, y):
+        """Handle right-click for context menu."""
+        print(f"DEBUG: Right-click at coordinates ({x}, {y})")
+        
+        # Instead of using click coordinates, use the currently selected item
+        # This is more reliable than coordinate detection
+        selection = self.tree_view.get_selection()
+        model, tree_iter = selection.get_selected()
+        
+        if not tree_iter:
+            print("DEBUG: No item selected")
+            return
+            
+        display_name = model[tree_iter][0]  # display_name column
+        file_type = model[tree_iter][1]     # file_type column  
+        is_category = model[tree_iter][3]   # is_category column
+        
+        print(f"DEBUG: Selected item details - display_name: '{display_name}', file_type: '{file_type}', is_category: {is_category}")
+        
+        # Only show menu for file extensions (not categories)
+        if not file_type or is_category or not file_type.startswith('.'):
+            print(f"DEBUG: Not showing menu - file_type: '{file_type}', is_category: {is_category}")
+            return
+            
+        print(f"DEBUG: Right-click on extension: {file_type}")
+        self.show_move_menu(file_type, x, y)
+        
+    def show_move_menu(self, extension, x, y):
+        """Show context menu to move extension to different category."""
+        # Create popover menu
+        popover = Gtk.PopoverMenu()
+        
+        # Create menu model
+        from gi.repository import Gio
+        menu_model = Gio.Menu()
+        
+        # Add move options
+        categories = ['archives', 'documents', 'images', 'audio', 'video', 'code', 'config', 'other']
+        
+        for category in categories:
+            menu_model.append(f"Move to {category.title()}", f"move.{category}")
+            
+        popover.set_menu_model(menu_model)
+        popover.set_parent(self.tree_view)
+        
+        # Store the extension for the action handlers
+        self.context_extension = extension
+        
+        # Create action group for move actions
+        action_group = Gio.SimpleActionGroup()
+        
+        for category in categories:
+            action = Gio.SimpleAction.new(category, None)
+            action.connect("activate", lambda a, p, cat=category: self.move_extension_to_category(extension, cat))
+            action_group.add_action(action)
+            
+        popover.insert_action_group("move", action_group)
+        
+        # Position and show
+        rect = Gdk.Rectangle()
+        rect.x = int(x)
+        rect.y = int(y)
+        rect.width = 1
+        rect.height = 1
+        popover.set_pointing_to(rect)
+        popover.popup()
+        
+    def move_extension_to_category(self, extension, category):
+        """Move extension to specified category."""
+        print(f"DEBUG: *** MOVING EXTENSION: '{extension}' to category '{category}' ***")
+        self.emit('extension-moved', extension, category)
+        
+    def on_drag_begin(self, source, drag):
+        """Handle drag begin."""
+        print(f"DEBUG: Drag begin - {getattr(self, 'dragged_extension', 'unknown')}")
+        
+    def on_drag_end(self, source, drag, delete_data):
+        """Handle drag end."""
+        print(f"DEBUG: Drag end")
+        if hasattr(self, 'dragged_extension'):
+            delattr(self, 'dragged_extension')
+            
+    def on_drag_enter(self, target, x, y):
+        """Handle drag enter."""
+        print(f"DEBUG: Drag enter at {x}, {y}")
+        # Highlight valid drop targets
+        path_info = self.tree_view.get_path_at_pos(int(x), int(y))
+        if path_info:
+            path, column, cell_x, cell_y = path_info
+            tree_iter = self.store.get_iter(path)
+            is_category = self.store[tree_iter][3]
+            
+            print(f"DEBUG: Drag over {'category' if is_category else 'item'}")
+            
+            if is_category:
+                # Valid drop target - add visual feedback
+                self.tree_view.set_drag_dest_row(path, Gtk.TreeViewDropPosition.INTO_OR_AFTER)
+                return Gdk.DragAction.MOVE
+                
+        return 0  # No action
+        
+    def on_drag_leave(self, target):
+        """Handle drag leave."""
+        # Remove visual feedback
+        self.tree_view.set_drag_dest_row(None, Gtk.TreeViewDropPosition.INTO_OR_AFTER)
+        
+    def on_drop(self, target, value, x, y):
+        """Handle drop operation."""
+        # Clear visual feedback first
+        self.tree_view.set_drag_dest_row(None, Gtk.TreeViewDropPosition.INTO_OR_AFTER)
+        
+        if not hasattr(self, 'dragged_extension'):
+            return False
+            
+        dragged_ext = self.dragged_extension
+        print(f"DEBUG: Drop received for {dragged_ext}")
+        
+        # Find the drop target
+        path_info = self.tree_view.get_path_at_pos(int(x), int(y))
+        if not path_info:
+            print("DEBUG: No drop target found")
+            return False
+            
+        path, column, cell_x, cell_y = path_info
+        tree_iter = self.store.get_iter(path)
+        
+        target_file_type = self.store[tree_iter][1]
+        target_is_category = self.store[tree_iter][3]
+        
+        # Only allow dropping on categories
+        if not target_is_category:
+            return False
+            
+        print(f"DEBUG: Dropping {dragged_ext} on category at path {path}")
+        
+        # Find which category this represents
+        target_category = self.get_category_from_path(path)
+        if target_category:
+            self.emit('extension-moved', dragged_ext, target_category)
+            return True
+            
+        return False
+        
+    def get_category_from_path(self, path):
+        """Get the category name from a tree path."""
+        # Map tree positions to category names
+        # This is a simplified approach - in a real implementation you'd want
+        # to store category info in the tree model
+        
+        if len(path.get_indices()) == 1:
+            # Top level category
+            index = path.get_indices()[0]
+            if index == 0:
+                return None  # File System Objects - not for extensions
+            elif index == 1:
+                return None  # File Extensions parent - not specific
+        elif len(path.get_indices()) == 2:
+            # Sub-category under File Extensions
+            parent_index = path.get_indices()[0]
+            child_index = path.get_indices()[1]
+            
+            if parent_index == 1:  # File Extensions
+                categories = ['archives', 'documents', 'images', 'audio', 'video', 'code', 'config']
+                if child_index < len(categories):
+                    return categories[child_index]
+                    
+        return 'other'  # Default category
+        
     def update_data(self, parser: DirColorsParser):
         """Update the tree view with data from parser."""
+        # Save current expansion state
+        self.save_expansion_state()
+        
         self.store.clear()
         
         # Get categorized file types
@@ -175,6 +373,9 @@ class FileTypeTreeView(Gtk.ScrolledWindow):
         path = self.store.get_path(fs_iter)
         self.tree_view.expand_row(path, False)
         
+        # Restore previous expansion state
+        self.restore_expansion_state()
+        
     def _format_file_type_name(self, file_type: str) -> str:
         """Format file type name for display."""
         display_names = {
@@ -257,6 +458,28 @@ class FileTypeTreeView(Gtk.ScrolledWindow):
         }
         
         return ext_icons.get(extension.lower(), 'text-x-generic-symbolic')
+        
+    def save_expansion_state(self):
+        """Save the current expansion state of the tree."""
+        self.expanded_paths.clear()
+        
+        def save_expanded_row(tree_view, path, user_data):
+            # Convert path to string representation for storage
+            path_str = path.to_string()
+            self.expanded_paths.add(path_str)
+            return False  # Continue traversal
+            
+        self.tree_view.map_expanded_rows(save_expanded_row, None)
+        
+    def restore_expansion_state(self):
+        """Restore the previously saved expansion state."""
+        for path_str in self.expanded_paths:
+            try:
+                path = Gtk.TreePath.new_from_string(path_str)
+                self.tree_view.expand_to_path(path)
+            except:
+                # Path might not be valid anymore, skip it
+                pass
         
     def on_selection_changed(self, selection):
         """Handle tree selection changes."""
