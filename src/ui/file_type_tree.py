@@ -262,11 +262,17 @@ class FileTypeTreeView(Gtk.ScrolledWindow):
         """Handle tree selection changes."""
         model, tree_iter = selection.get_selected()
         if tree_iter:
-            file_type = model[tree_iter][1]  # file_type column
-            is_category = model[tree_iter][3]  # is_category column
+            display_name = model[tree_iter][0]  # display_name column
+            file_type = model[tree_iter][1]     # file_type column
+            is_category = model[tree_iter][3]   # is_category column
+            
+            print(f"DEBUG Tree: Selected '{display_name}', file_type='{file_type}', is_category={is_category}")
             
             if file_type and not is_category:
+                print(f"DEBUG Tree: Emitting selection-changed for: {file_type}")
                 self.emit('selection-changed', file_type)
+            else:
+                print(f"DEBUG Tree: Not emitting (empty file_type or category)")
                 
     def get_selected_file_type(self) -> Optional[str]:
         """Get the currently selected file type."""

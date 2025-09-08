@@ -49,12 +49,17 @@ pip install -r requirements.txt
 ### Running the Application
 
 ```bash
-# From the project directory
-python3 run.py
+# Easy launcher (recommended)
+./launch.sh
 
 # Or run directly
-python3 src/main.py
+python3 run.py
+
+# Open a specific .dircolors file
+python3 run.py /path/to/your/.dircolors
 ```
+
+**Note:** The application will automatically load your `~/.dircolors` file if it exists.
 
 ### Opening a File
 

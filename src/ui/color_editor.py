@@ -29,18 +29,40 @@ class ColorEditor(Gtk.Box):
         self.set_margin_top(12)
         self.set_margin_bottom(12)
         
+        # Set minimum size and expansion
+        self.set_size_request(300, 400)
+        self.set_vexpand(True)
+        self.set_hexpand(True)
+        
+        # Add background color for visual debugging
+        css_provider = Gtk.CssProvider()
+        css_provider.load_from_data(b"""
+        .color-editor-debug {
+            background-color: #f0f0f0;
+            border: 2px solid #ff0000;
+        }
+        """)
+        self.get_style_context().add_provider(css_provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+        self.add_css_class("color-editor-debug")
+        
         self.color_info: Optional[ColorInfo] = None
         self.updating = False  # Prevent recursion during updates
         
+        print("DEBUG ColorEditor: Initializing color editor...")
         self.setup_ui()
+        print("DEBUG ColorEditor: Color editor setup complete")
         
     def setup_ui(self):
         """Set up the color editor interface."""
         # Title
         title = Gtk.Label(label="Color Editor")
-        title.set_markup("<b>Color Editor</b>")
+        title.set_markup("<big><b>Color Editor</b></big>")
         title.set_halign(Gtk.Align.START)
         self.append(title)
+        
+        # Add a separator for visual clarity
+        separator = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
+        self.append(separator)
         
         # Color mode selector
         mode_frame = Gtk.Frame(label="Color Mode")
@@ -195,9 +217,11 @@ class ColorEditor(Gtk.Box):
         
     def set_color_code(self, color_code: str):
         """Set the color code to edit."""
+        print(f"DEBUG ColorEditor: set_color_code called with: '{color_code}'")
         self.updating = True
         
         self.color_info = parse_color_code(color_code)
+        print(f"DEBUG ColorEditor: Parsed color info - styles: {[s.name for s in self.color_info.styles]}, fg: {self.color_info.foreground}, bg: {self.color_info.background}")
         
         # Update mode
         if self.color_info.mode == ColorMode.BASIC_8:
@@ -224,8 +248,15 @@ class ColorEditor(Gtk.Box):
             rgba.blue = b / 255.0
             rgba.alpha = 1.0
             self.fg_color_button.set_rgba(rgba)
+            self.fg_color_button.set_sensitive(True)
             self.fg_rgb_label.set_text(f"RGB: {self.color_info.foreground}")
         else:
+            # Set to a default grey and disable
+            rgba = Gdk.RGBA()
+            rgba.red = rgba.green = rgba.blue = 0.5
+            rgba.alpha = 1.0
+            self.fg_color_button.set_rgba(rgba)
+            self.fg_color_button.set_sensitive(False)
             self.fg_rgb_label.set_text("RGB: (none)")
             
         if self.color_info.background:
@@ -236,17 +267,27 @@ class ColorEditor(Gtk.Box):
             rgba.blue = b / 255.0
             rgba.alpha = 1.0
             self.bg_color_button.set_rgba(rgba)
+            self.bg_color_button.set_sensitive(True)
             self.bg_rgb_label.set_text(f"RGB: {self.color_info.background}")
         else:
+            # Set to a default grey and disable
+            rgba = Gdk.RGBA()
+            rgba.red = rgba.green = rgba.blue = 0.5
+            rgba.alpha = 1.0
+            self.bg_color_button.set_rgba(rgba)
+            self.bg_color_button.set_sensitive(False)
             self.bg_rgb_label.set_text("RGB: (none)")
             
         # Update code entry
         self.code_entry.set_text(color_code)
+        print(f"DEBUG ColorEditor: Set code entry text to: '{color_code}'")
         
         # Update preview
         self.update_preview()
+        print("DEBUG ColorEditor: Preview updated")
         
         self.updating = False
+        print("DEBUG ColorEditor: set_color_code complete")
         
     def clear(self):
         """Clear the editor."""
@@ -264,6 +305,15 @@ class ColorEditor(Gtk.Box):
         self.code_entry.set_text("")
         self.fg_rgb_label.set_text("RGB: (none)")
         self.bg_rgb_label.set_text("RGB: (none)")
+        
+        # Set color buttons to grey and disabled
+        rgba = Gdk.RGBA()
+        rgba.red = rgba.green = rgba.blue = 0.5
+        rgba.alpha = 1.0
+        self.fg_color_button.set_rgba(rgba)
+        self.fg_color_button.set_sensitive(False)
+        self.bg_color_button.set_rgba(rgba)
+        self.bg_color_button.set_sensitive(False)
         
         # Clear preview
         self.preview_label.set_markup("Sample Text")

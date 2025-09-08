@@ -17,27 +17,29 @@ class DirColorEditorApp(Adw.Application):
     def __init__(self):
         super().__init__(
             application_id='com.example.dircolor-editor',
-            flags=Gio.ApplicationFlags.DEFAULT_FLAGS
+            flags=Gio.ApplicationFlags.HANDLES_OPEN
         )
+        self.window = None
         
-        self.connect('activate', self.on_activate)
-        self.connect('open', self.on_open)
-        
-    def on_activate(self, app):
+    def do_activate(self):
         """Called when the application is activated."""
-        # Create main window
-        self.window = MainWindow(application=self)
+        if not self.window:
+            # Create main window
+            self.window = MainWindow(application=self)
         self.window.present()
         
-    def on_open(self, app, files, n_files, hint):
+    def do_open(self, files, n_files, hint):
         """Called when files are opened with the application."""
-        self.on_activate(app)
+        self.do_activate()
         
         # Load the first file if provided
-        if files and len(files) > 0:
-            file_path = files[0].get_path()
-            if file_path:
-                self.window.load_file(Path(file_path))
+        if files and n_files > 0:
+            try:
+                file_path = files[0].get_path()
+                if file_path and Path(file_path).exists():
+                    self.window.load_file(Path(file_path))
+            except Exception as e:
+                print(f"Warning: Could not open file: {e}")
 
 def main():
     """Main entry point."""

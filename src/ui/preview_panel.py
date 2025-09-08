@@ -41,11 +41,12 @@ class PreviewPanel(Gtk.ScrolledWindow):
         self.preview_text.set_monospace(True)
         self.preview_text.set_wrap_mode(Gtk.WrapMode.NONE)
         
-        # Set background color to simulate terminal
-        self.preview_text.override_background_color(
-            Gtk.StateFlags.NORMAL, 
-            Gtk.Gdk.RGBA(0.1, 0.1, 0.1, 1.0)  # Dark background
-        )
+        # Add CSS for dark terminal background
+        self.css_provider = Gtk.CssProvider()
+        self.update_background_css("#1e1e1e", "#ffffff")
+        
+        style_context = self.preview_text.get_style_context()
+        style_context.add_provider(self.css_provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
         
         buffer = self.preview_text.get_buffer()
         
@@ -71,17 +72,29 @@ class PreviewPanel(Gtk.ScrolledWindow):
             ("📄", "readme.txt", ".txt"),
             ("📄", "config.json", ".json"),
             ("📄", "document.pdf", ".pdf"),
+            ("📄", "notes.md", ".md"),
             ("🖼️", "photo.jpg", ".jpg"),
+            ("🖼️", "portrait.jpeg", ".jpeg"),
             ("🖼️", "image.png", ".png"),
+            ("🖼️", "icon.gif", ".gif"),
+            ("🖼️", "diagram.svg", ".svg"),
+            ("🖼️", "texture.bmp", ".bmp"),
             ("🎵", "song.mp3", ".mp3"),
             ("🎵", "audio.wav", ".wav"),
+            ("🎵", "music.flac", ".flac"),
+            ("🎵", "track.ogg", ".ogg"),
             ("🎬", "movie.mp4", ".mp4"),
             ("🎬", "video.avi", ".avi"),
+            ("🎬", "film.mkv", ".mkv"),
             ("📦", "archive.zip", ".zip"),
-            ("📦", "backup.tar.gz", ".tar"),
+            ("📦", "backup.tar", ".tar"),
+            ("📦", "data.gz", ".gz"),
+            ("📦", "files.bz2", ".bz2"),
             ("⚡", "script.py", ".py"),
             ("⚡", "program.js", ".js"),
             ("⚡", "webpage.html", ".html"),
+            ("⚡", "styles.css", ".css"),
+            ("⚡", "server.php", ".php"),
             ("🔗", "link", "LINK"),
             ("💔", "broken_link", "ORPHAN"),
             ("🏃", "executable", "EXEC"),
@@ -97,11 +110,10 @@ class PreviewPanel(Gtk.ScrolledWindow):
         tag_table.foreach(lambda tag, data: tag_table.remove(tag), None)
         
         # Add header
-        header_text = "Terminal Color Preview (simulated ls output)\n"
-        header_text += "=" * 50 + "\n\n"
+        header_text = "Terminal Preview (simulated)\n"
+        header_text += "=" * 28 + "\n\n"
         
-        iter_start = buffer.get_end_iter()
-        buffer.insert(iter_start, header_text)
+        buffer.insert_at_cursor(header_text)
         
         # Add sample files with colors
         for icon, filename, file_type in self.sample_files:
@@ -117,13 +129,23 @@ class PreviewPanel(Gtk.ScrolledWindow):
                 # Apply foreground color
                 if color_info.foreground:
                     r, g, b = color_info.foreground
-                    rgba = Gtk.Gdk.RGBA(r/255.0, g/255.0, b/255.0, 1.0)
+                    from gi.repository import Gdk
+                    rgba = Gdk.RGBA()
+                    rgba.red = r/255.0
+                    rgba.green = g/255.0
+                    rgba.blue = b/255.0
+                    rgba.alpha = 1.0
                     tag.set_property("foreground-rgba", rgba)
                     
                 # Apply background color
                 if color_info.background:
                     r, g, b = color_info.background
-                    rgba = Gtk.Gdk.RGBA(r/255.0, g/255.0, b/255.0, 1.0)
+                    from gi.repository import Gdk
+                    rgba = Gdk.RGBA()
+                    rgba.red = r/255.0
+                    rgba.green = g/255.0
+                    rgba.blue = b/255.0
+                    rgba.alpha = 1.0
                     tag.set_property("background-rgba", rgba)
                     
                 # Apply text styles
@@ -137,48 +159,62 @@ class PreviewPanel(Gtk.ScrolledWindow):
                     
                 # Insert filename with formatting
                 text = f"{icon}  {filename}\n"
-                iter_start = buffer.get_end_iter()
-                iter_end = buffer.get_end_iter()
-                buffer.insert(iter_end, text)
-                iter_end = buffer.get_end_iter()
+                
+                # Get position before insertion
+                start_offset = buffer.get_char_count()
+                
+                # Insert text
+                buffer.insert_at_cursor(text)
+                
+                # Get iterators for the inserted text
+                start_iter = buffer.get_iter_at_offset(start_offset)
+                end_iter = buffer.get_end_iter()
                 
                 # Apply the tag to the inserted text
-                buffer.apply_tag(tag, iter_start, iter_end)
+                buffer.apply_tag(tag, start_iter, end_iter)
             else:
                 # No color defined, use default
                 text = f"{icon}  {filename}\n"
-                iter_start = buffer.get_end_iter()
-                buffer.insert(iter_start, text)
+                buffer.insert_at_cursor(text)
                 
-        # Add color code reference
-        buffer.insert(buffer.get_end_iter(), "\n" + "=" * 50 + "\n")
-        buffer.insert(buffer.get_end_iter(), "Color Code Reference:\n\n")
-        
-        # Show active color codes
-        for file_type in ["DIR", "LINK", "EXEC"]:
-            entry = parser.get_entry(file_type)
-            if entry:
-                ref_text = f"{file_type:15} = {entry.color_code}\n"
-                buffer.insert(buffer.get_end_iter(), ref_text)
-                
-        # Show some extensions
-        for ext in [".txt", ".zip", ".jpg", ".mp3"]:
-            entry = parser.get_entry(ext)
-            if entry:
-                ref_text = f"{ext:15} = {entry.color_code}\n"
-                buffer.insert(buffer.get_end_iter(), ref_text)
                 
     def refresh_preview(self):
         """Refresh the preview display."""
         # This would be called from the main window with current parser
         pass
         
+    def update_background_css(self, bg_color: str, text_color: str):
+        """Update the CSS with new background and text colors."""
+        css_data = f"""
+        textview {{
+            background-color: {bg_color};
+            color: {text_color};
+            font-family: monospace;
+            font-size: 18pt;
+        }}
+        """.encode()
+        self.css_provider.load_from_data(css_data)
+        
+    def set_background_color(self, rgba):
+        """Set the background color from a Gdk.RGBA object."""
+        # Convert RGBA to hex
+        r = int(rgba.red * 255)
+        g = int(rgba.green * 255)
+        b = int(rgba.blue * 255)
+        bg_hex = f"#{r:02x}{g:02x}{b:02x}"
+        
+        # Choose text color based on brightness
+        brightness = (r * 299 + g * 587 + b * 114) / 1000
+        text_color = "#000000" if brightness > 128 else "#ffffff"
+        
+        self.update_background_css(bg_hex, text_color)
+        
     def create_color_demonstration(self, parser: DirColorsParser):
         """Create a comprehensive color demonstration."""
         buffer = self.preview_text.get_buffer()
         
         # Add color palette demonstration
-        buffer.insert(buffer.get_end_iter(), "\nColor Palette Demo:\n")
+        buffer.insert_at_cursor("\nColor Palette Demo:\n")
         
         # Basic 8 colors
         basic_colors = [
@@ -198,20 +234,33 @@ class PreviewPanel(Gtk.ScrolledWindow):
             
             if color_info.foreground:
                 r, g, b = color_info.foreground
-                rgba = Gtk.Gdk.RGBA(r/255.0, g/255.0, b/255.0, 1.0)
+                from gi.repository import Gdk
+                rgba = Gdk.RGBA()
+                rgba.red = r/255.0
+                rgba.green = g/255.0
+                rgba.blue = b/255.0
+                rgba.alpha = 1.0
                 tag.set_property("foreground-rgba", rgba)
                 
             text = f"■ {color_name} ({color_code})  "
-            iter_start = buffer.get_end_iter()
-            iter_end = buffer.get_end_iter()
-            buffer.insert(iter_end, text)
-            iter_end = buffer.get_end_iter()
-            buffer.apply_tag(tag, iter_start, iter_end)
             
-        buffer.insert(buffer.get_end_iter(), "\n\n")
+            # Get position before insertion
+            start_offset = buffer.get_char_count()
+            
+            # Insert text
+            buffer.insert_at_cursor(text)
+            
+            # Get iterators for the inserted text
+            start_iter = buffer.get_iter_at_offset(start_offset)
+            end_iter = buffer.get_end_iter()
+            
+            # Apply the tag
+            buffer.apply_tag(tag, start_iter, end_iter)
+            
+        buffer.insert_at_cursor("\n\n")
         
         # Style demonstration
-        buffer.insert(buffer.get_end_iter(), "Style Demo:\n")
+        buffer.insert_at_cursor("Style Demo:\n")
         
         styles_demo = [
             ("Normal", "00"),
@@ -236,8 +285,16 @@ class PreviewPanel(Gtk.ScrolledWindow):
                 tag.set_property("underline", Pango.Underline.SINGLE)
                 
             text = f"{style_name} text ({style_code})\n"
-            iter_start = buffer.get_end_iter()
-            iter_end = buffer.get_end_iter()
-            buffer.insert(iter_end, text)
-            iter_end = buffer.get_end_iter()
-            buffer.apply_tag(tag, iter_start, iter_end)
+            
+            # Get position before insertion
+            start_offset = buffer.get_char_count()
+            
+            # Insert text
+            buffer.insert_at_cursor(text)
+            
+            # Get iterators for the inserted text
+            start_iter = buffer.get_iter_at_offset(start_offset)
+            end_iter = buffer.get_end_iter()
+            
+            # Apply the tag
+            buffer.apply_tag(tag, start_iter, end_iter)
