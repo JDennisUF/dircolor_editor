@@ -145,10 +145,8 @@ class MainWindow(Gtk.ApplicationWindow):
         self.color_editor.set_sensitive(True)
         self.color_editor.set_vexpand(True)
         
-        print("DEBUG MainWindow: Created color editor, adding to frame...")
         center_frame.set_child(self.color_editor)
         content_box.append(center_frame)
-        print("DEBUG MainWindow: Color editor panel setup complete")
         
         # Right panel: Preview - Expandable and larger
         right_frame = Gtk.Frame()
@@ -393,15 +391,12 @@ class MainWindow(Gtk.ApplicationWindow):
         
     def on_file_type_selected(self, tree_view, file_type):
         """Handle file type selection in the tree."""
-        print(f"DEBUG: File type selected: {file_type}")
         entry = self.parser.get_entry(file_type)
         if entry:
-            print(f"DEBUG: Found entry with color code: {entry.color_code}")
             self.color_editor.set_color_code(entry.color_code)
             self.color_editor.set_sensitive(True)
             self.update_status(f"Editing: {file_type} = {entry.color_code}")
         else:
-            print(f"DEBUG: No entry found for: {file_type}")
             self.color_editor.clear()
             self.color_editor.set_sensitive(False)
             self.update_status(f"No color defined for: {file_type}")
@@ -416,33 +411,22 @@ class MainWindow(Gtk.ApplicationWindow):
             
     def on_extension_moved(self, tree_view, extension, target_category):
         """Handle extension moved between categories via drag-and-drop."""
-        print(f"DEBUG MainWindow: *** RECEIVED MOVE REQUEST: '{extension}' to '{target_category}' ***")
         
         # Check if the extension exists before moving
         entry = self.parser.get_entry(extension)
-        if entry:
-            print(f"DEBUG MainWindow: Found entry for {extension}: {entry.color_code}")
-        else:
-            print(f"DEBUG MainWindow: WARNING - No entry found for extension {extension}")
             
         # Use the parser's move method to handle category changes
         try:
             success = self.parser.move_extension_to_category(extension, target_category)
-            print(f"DEBUG MainWindow: Move operation result: {success}")
-            
             if success:
                 # Refresh the UI to show the change
                 self.refresh_ui()
                 self.set_modified(True)
                 self.update_status(f"Moved {extension} to {target_category} category")
             else:
-                print(f"DEBUG: Failed to move {extension} to {target_category}")
                 self.show_error(f"Could not move {extension} to {target_category} category")
-                
         except Exception as e:
-            print(f"DEBUG: Error moving extension: {e}")
             self.show_error(f"Failed to move extension: {e}")
-            
     def set_modified(self, modified: bool):
         """Set the modified state."""
         self.modified = modified

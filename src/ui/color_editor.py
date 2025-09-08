@@ -48,9 +48,7 @@ class ColorEditor(Gtk.Box):
         self.color_info: Optional[ColorInfo] = None
         self.updating = False  # Prevent recursion during updates
         
-        print("DEBUG ColorEditor: Initializing color editor...")
         self.setup_ui()
-        print("DEBUG ColorEditor: Color editor setup complete")
         
     def setup_ui(self):
         """Set up the color editor interface."""
@@ -217,11 +215,9 @@ class ColorEditor(Gtk.Box):
         
     def set_color_code(self, color_code: str):
         """Set the color code to edit."""
-        print(f"DEBUG ColorEditor: set_color_code called with: '{color_code}'")
         self.updating = True
         
         self.color_info = parse_color_code(color_code)
-        print(f"DEBUG ColorEditor: Parsed color info - styles: {[s.name for s in self.color_info.styles]}, fg: {self.color_info.foreground}, bg: {self.color_info.background}")
         
         # Update mode
         if self.color_info.mode == ColorMode.BASIC_8:
@@ -239,7 +235,7 @@ class ColorEditor(Gtk.Box):
         self.style_blink.set_active(Style.BLINK in self.color_info.styles)
         self.style_reverse.set_active(Style.REVERSE in self.color_info.styles)
         
-        # Update colors
+        # Update colors and clear buttons
         if self.color_info.foreground:
             rgba = Gdk.RGBA()
             r, g, b = self.color_info.foreground
@@ -250,14 +246,16 @@ class ColorEditor(Gtk.Box):
             self.fg_color_button.set_rgba(rgba)
             self.fg_color_button.set_sensitive(True)
             self.fg_rgb_label.set_text(f"RGB: {self.color_info.foreground}")
+            self.fg_clear_button.set_visible(True)
         else:
-            # Set to a default grey and disable
+            # Set to a default grey but keep enabled for color selection
             rgba = Gdk.RGBA()
             rgba.red = rgba.green = rgba.blue = 0.5
             rgba.alpha = 1.0
             self.fg_color_button.set_rgba(rgba)
-            self.fg_color_button.set_sensitive(False)
+            self.fg_color_button.set_sensitive(True)
             self.fg_rgb_label.set_text("RGB: (none)")
+            self.fg_clear_button.set_visible(False)
             
         if self.color_info.background:
             rgba = Gdk.RGBA()
@@ -269,25 +267,24 @@ class ColorEditor(Gtk.Box):
             self.bg_color_button.set_rgba(rgba)
             self.bg_color_button.set_sensitive(True)
             self.bg_rgb_label.set_text(f"RGB: {self.color_info.background}")
+            self.bg_clear_button.set_visible(True)
         else:
-            # Set to a default grey and disable
+            # Set to a default grey but keep enabled for color selection
             rgba = Gdk.RGBA()
             rgba.red = rgba.green = rgba.blue = 0.5
             rgba.alpha = 1.0
             self.bg_color_button.set_rgba(rgba)
-            self.bg_color_button.set_sensitive(False)
+            self.bg_color_button.set_sensitive(True)
             self.bg_rgb_label.set_text("RGB: (none)")
+            self.bg_clear_button.set_visible(False)
             
         # Update code entry
         self.code_entry.set_text(color_code)
-        print(f"DEBUG ColorEditor: Set code entry text to: '{color_code}'")
         
         # Update preview
         self.update_preview()
-        print("DEBUG ColorEditor: Preview updated")
         
         self.updating = False
-        print("DEBUG ColorEditor: set_color_code complete")
         
     def clear(self):
         """Clear the editor."""
@@ -306,14 +303,16 @@ class ColorEditor(Gtk.Box):
         self.fg_rgb_label.set_text("RGB: (none)")
         self.bg_rgb_label.set_text("RGB: (none)")
         
-        # Set color buttons to grey and disabled
+        # Set color buttons to grey but keep enabled, hide clear buttons
         rgba = Gdk.RGBA()
         rgba.red = rgba.green = rgba.blue = 0.5
         rgba.alpha = 1.0
         self.fg_color_button.set_rgba(rgba)
-        self.fg_color_button.set_sensitive(False)
+        self.fg_color_button.set_sensitive(True)
+        self.fg_clear_button.set_visible(False)
         self.bg_color_button.set_rgba(rgba)
-        self.bg_color_button.set_sensitive(False)
+        self.bg_color_button.set_sensitive(True)
+        self.bg_clear_button.set_visible(False)
         
         # Clear preview
         self.preview_label.set_markup("Sample Text")
@@ -416,6 +415,7 @@ class ColorEditor(Gtk.Box):
         self.color_info.foreground = rgb
         
         self.fg_rgb_label.set_text(f"RGB: {rgb}")
+        self.fg_clear_button.set_visible(True)
         self.rebuild_color_code()
         
     def on_bg_color_changed(self, button):
@@ -435,6 +435,7 @@ class ColorEditor(Gtk.Box):
         self.color_info.background = rgb
         
         self.bg_rgb_label.set_text(f"RGB: {rgb}")
+        self.bg_clear_button.set_visible(True)
         self.rebuild_color_code()
         
     def on_fg_clear(self, button):
@@ -442,6 +443,7 @@ class ColorEditor(Gtk.Box):
         if self.color_info:
             self.color_info.foreground = None
         self.fg_rgb_label.set_text("RGB: (none)")
+        self.fg_clear_button.set_visible(False)
         self.rebuild_color_code()
         
     def on_bg_clear(self, button):
@@ -449,6 +451,7 @@ class ColorEditor(Gtk.Box):
         if self.color_info:
             self.color_info.background = None
         self.bg_rgb_label.set_text("RGB: (none)")
+        self.bg_clear_button.set_visible(False)
         self.rebuild_color_code()
         
     def on_code_entry_changed(self, entry):

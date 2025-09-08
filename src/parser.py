@@ -269,50 +269,34 @@ class DirColorsParser:
         
     def move_extension_to_category(self, extension: str, target_category: str) -> bool:
         """Move an extension to a different category."""
-        print(f"DEBUG Parser: *** MOVE_EXTENSION_TO_CATEGORY: '{extension}' to '{target_category}' ***")
         
         if not extension.startswith('.'):
-            print(f"DEBUG Parser: Extension doesn't start with dot: {extension}")
             return False
             
         # Get the current entry
         entry = self.get_entry(extension)
         if not entry:
-            print(f"DEBUG Parser: No entry found for extension: {extension}")
             return False
             
-        print(f"DEBUG Parser: Found entry for {extension}: {entry.color_code}")
-        
         # Remove from current category if it exists in predefined categories
         found_in_category = None
         for category_name, extensions in self.EXTENSION_CATEGORIES.items():
             if extension in extensions:
-                print(f"DEBUG Parser: Found {extension} in category {category_name}, removing...")
                 extensions.remove(extension)
                 found_in_category = category_name
                 break
-                
-        if found_in_category:
-            print(f"DEBUG Parser: Removed {extension} from {found_in_category}")
-        else:
-            print(f"DEBUG Parser: Extension {extension} was not in any predefined category")
                 
         # Add to target category if it exists
         if target_category in self.EXTENSION_CATEGORIES:
             if extension not in self.EXTENSION_CATEGORIES[target_category]:
                 self.EXTENSION_CATEGORIES[target_category].append(extension)
-                print(f"DEBUG Parser: Added {extension} to {target_category}")
                 return True
             else:
-                print(f"DEBUG Parser: Extension {extension} already in {target_category}")
                 return True
         elif target_category == 'other':
             # Handle 'other' category - just remove from predefined categories
-            print(f"DEBUG Parser: Moved {extension} to 'other' category")
             return True
-        else:
-            print(f"DEBUG Parser: Unknown target category: {target_category}")
-            
+
         return False
         
     def get_categories(self) -> Dict[str, List[str]]:

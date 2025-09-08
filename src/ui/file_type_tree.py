@@ -113,11 +113,11 @@ class FileTypeTreeView(Gtk.ScrolledWindow):
         
         # TODO: Implement working GTK4 drag-and-drop
         # The current implementation has event handling issues
-        print("DEBUG: Drag-and-drop temporarily disabled, use context menu instead")
+    # ...existing code...
         
     def on_right_click(self, gesture, n_press, x, y):
         """Handle right-click for context menu."""
-        print(f"DEBUG: Right-click at coordinates ({x}, {y})")
+    # ...existing code...
         
         # Instead of using click coordinates, use the currently selected item
         # This is more reliable than coordinate detection
@@ -125,21 +125,21 @@ class FileTypeTreeView(Gtk.ScrolledWindow):
         model, tree_iter = selection.get_selected()
         
         if not tree_iter:
-            print("DEBUG: No item selected")
+            # ...existing code...
             return
             
         display_name = model[tree_iter][0]  # display_name column
         file_type = model[tree_iter][1]     # file_type column  
         is_category = model[tree_iter][3]   # is_category column
         
-        print(f"DEBUG: Selected item details - display_name: '{display_name}', file_type: '{file_type}', is_category: {is_category}")
+    # ...existing code...
         
         # Only show menu for file extensions (not categories)
         if not file_type or is_category or not file_type.startswith('.'):
-            print(f"DEBUG: Not showing menu - file_type: '{file_type}', is_category: {is_category}")
+            # ...existing code...
             return
             
-        print(f"DEBUG: Right-click on extension: {file_type}")
+    # ...existing code...
         self.show_move_menu(file_type, x, y)
         
     def show_move_menu(self, extension, x, y):
@@ -184,22 +184,22 @@ class FileTypeTreeView(Gtk.ScrolledWindow):
         
     def move_extension_to_category(self, extension, category):
         """Move extension to specified category."""
-        print(f"DEBUG: *** MOVING EXTENSION: '{extension}' to category '{category}' ***")
+    # ...existing code...
         self.emit('extension-moved', extension, category)
         
     def on_drag_begin(self, source, drag):
         """Handle drag begin."""
-        print(f"DEBUG: Drag begin - {getattr(self, 'dragged_extension', 'unknown')}")
+    # ...existing code...
         
     def on_drag_end(self, source, drag, delete_data):
         """Handle drag end."""
-        print(f"DEBUG: Drag end")
+    # ...existing code...
         if hasattr(self, 'dragged_extension'):
             delattr(self, 'dragged_extension')
             
     def on_drag_enter(self, target, x, y):
         """Handle drag enter."""
-        print(f"DEBUG: Drag enter at {x}, {y}")
+    # ...existing code...
         # Highlight valid drop targets
         path_info = self.tree_view.get_path_at_pos(int(x), int(y))
         if path_info:
@@ -207,7 +207,7 @@ class FileTypeTreeView(Gtk.ScrolledWindow):
             tree_iter = self.store.get_iter(path)
             is_category = self.store[tree_iter][3]
             
-            print(f"DEBUG: Drag over {'category' if is_category else 'item'}")
+            # ...existing code...
             
             if is_category:
                 # Valid drop target - add visual feedback
@@ -230,12 +230,12 @@ class FileTypeTreeView(Gtk.ScrolledWindow):
             return False
             
         dragged_ext = self.dragged_extension
-        print(f"DEBUG: Drop received for {dragged_ext}")
+    # ...existing code...
         
         # Find the drop target
         path_info = self.tree_view.get_path_at_pos(int(x), int(y))
         if not path_info:
-            print("DEBUG: No drop target found")
+            # ...existing code...
             return False
             
         path, column, cell_x, cell_y = path_info
@@ -248,7 +248,7 @@ class FileTypeTreeView(Gtk.ScrolledWindow):
         if not target_is_category:
             return False
             
-        print(f"DEBUG: Dropping {dragged_ext} on category at path {path}")
+    # ...existing code...
         
         # Find which category this represents
         target_category = self.get_category_from_path(path)
@@ -489,14 +489,10 @@ class FileTypeTreeView(Gtk.ScrolledWindow):
             file_type = model[tree_iter][1]     # file_type column
             is_category = model[tree_iter][3]   # is_category column
             
-            print(f"DEBUG Tree: Selected '{display_name}', file_type='{file_type}', is_category={is_category}")
-            
+            # ...existing code...
             if file_type and not is_category:
-                print(f"DEBUG Tree: Emitting selection-changed for: {file_type}")
                 self.emit('selection-changed', file_type)
-            else:
-                print(f"DEBUG Tree: Not emitting (empty file_type or category)")
-                
+            # ...existing code...
     def get_selected_file_type(self) -> Optional[str]:
         """Get the currently selected file type."""
         selection = self.tree_view.get_selection()
