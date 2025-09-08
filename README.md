@@ -1,8 +1,13 @@
+
 # Dircolor Editor
 
 A modern GTK4 application for editing `.dircolors` files with a visual interface. Easily customize terminal colors for the `ls` command and other color-aware applications.
 
-![Dircolor Editor Screenshot](screenshot.png)
+## Screenshot
+
+<p align="center">
+  <img src="screenshot.png" alt="Dircolor Editor Screenshot" width="600"/>
+</p>
 
 ## Features
 
