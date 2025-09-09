@@ -87,9 +87,7 @@ class MainWindow(Gtk.ApplicationWindow):
         view_menu.append("Set Background Color...", "win.set_bg_color")
         menu_model.append_submenu("View", view_menu)
         
-        help_menu = Gio.Menu()
-        help_menu.append("About", "win.about")
-        menu_model.append_submenu("Help", help_menu)
+        menu_model.append("About", "win.about")
         
         menu_button.set_menu_model(menu_model)
         
@@ -519,12 +517,64 @@ class MainWindow(Gtk.ApplicationWindow):
         """Show the about dialog."""
         dialog = Gtk.AboutDialog()
         dialog.set_transient_for(self)
+        dialog.set_modal(True)
+        
+        # Set basic info
         dialog.set_program_name("Dircolor Editor")
         dialog.set_version("0.1.0")
-        dialog.set_comments("A visual editor for .dircolors files")
+        dialog.set_comments("A visual editor for .dircolors files\n\nEdit your terminal colors with a user-friendly interface")
         dialog.set_website("https://github.com/example/dircolor-editor")
         dialog.set_copyright("© 2025 Jason Dennis")
         dialog.set_license_type(Gtk.License.MIT_X11)
+        
+        # Try to add a colorful icon to fill the top space
+        try:
+            # Try palette/color-related icons first
+            dialog.set_logo_icon_name("preferences-color")
+        except:
+            try:
+                # Try image/graphics related icons
+                dialog.set_logo_icon_name("applications-graphics")
+            except:
+                try:
+                    # Try system color preferences
+                    dialog.set_logo_icon_name("color-select-symbolic")
+                except:
+                    try:
+                        # Generic colorful icon
+                        dialog.set_logo_icon_name("multimedia-photo-manager")
+                    except:
+                        # No icon if none available
+                        pass
+        
+        # Try to make text larger with CSS
+        try:
+            css_provider = Gtk.CssProvider()
+            css_provider.load_from_data(b"""
+                .about-dialog {
+                    font-size: 14px;
+                }
+                .about-dialog .title {
+                    font-size: 18px;
+                    font-weight: bold;
+                }
+                .about-dialog .comments {
+                    font-size: 12px;
+                }
+            """)
+            
+            style_context = dialog.get_style_context()
+            style_context.add_provider(css_provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+            style_context.add_class("about-dialog")
+        except:
+            # CSS styling failed, continue without it
+            pass
+        
+        # Don't set authors or translator_credits to avoid creating tabs
+        
+        # Make the dialog larger for better text visibility
+        dialog.set_default_size(500, 400)
+        
         dialog.present()
         
     def add_extension(self):

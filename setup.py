@@ -6,8 +6,8 @@ setup(
     name="dircolor-editor",
     version="0.1.0",
     description="A GUI editor for .dircolors files",
-    author="Your Name",
-    author_email="your.email@example.com",
+    author="JDennis",
+    author_email="jdennisuf@gmail.com",
     packages=find_packages(),
     package_dir={"": "src"},
     install_requires=[
